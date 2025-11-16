@@ -1,10 +1,13 @@
 import streamlit as st
 import requests
+import os
+from dotenv import load_dotenv
 
-
+load_dotenv()
+secret = os.getenv("secret")
 API_URL = "https://8001-dep-01k97cftrq0d0tz2y37e2km2ge-d.cloudspaces.litng.ai"
 AUTH_HEADERS = {
-    "Authorization": f"Bearer d1414a76-13c4-4267-9b96-12b0b62425f5" 
+    "Authorization": secret
 }
 
 
@@ -166,4 +169,5 @@ def main_app():
 
 
 if __name__ == "__main__":
+
     main_app()
