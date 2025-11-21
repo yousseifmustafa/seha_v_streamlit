@@ -1,173 +1,119 @@
 import streamlit as st
 import requests
+import json
 import os
 
-secret = os.getenv("secret")
-API_URL = "https://8001-dep-01k97cftrq0d0tz2y37e2km2ge-d.cloudspaces.litng.ai"
-AUTH_HEADERS = {
-    "Authorization": secret
-}
+# إعدادات الصفحة
+st.set_page_config(
+    page_title="SehaTech AI",
+    page_icon="🩺",
+    layout="centered"
+)
 
 
-def diagnose_api_call(user_query, conversation_summary):
-    """ Client function to call the /diagnose TEXT endpoint. """
-    url = f"{API_URL}/diagnose"
-    data = {
-        "user_query": user_query,
-        "conversation_summary": conversation_summary
+
+# عنوان التطبيق
+st.title("🩺 SehaTech AI Doctor")
+st.caption("مساعدك الطبي الذكي (نص + صور)")
+
+# رابط الـ API
+API_URL = "https://8000-dep-01kam28bek66ky6z077hhkyms9-d.cloudspaces.litng.ai/chat"
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "summary" not in st.session_state:
+    st.session_state.summary = "لا يوجد تاريخ مرضي مسجل."
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+with st.popover("➕ إرفاق صورة", use_container_width=False):
+    uploaded_image = st.file_uploader("اختر صورة (أشعة/تحاليل)", type=["jpg", "png", "jpeg"], key="img_upload")
+    if uploaded_image:
+        st.image(uploaded_image, caption="تم اختيار الصورة", width=150)
+        st.success("الصورة جاهزة للإرسال مع رسالتك القادمة.")
+
+prompt = st.chat_input("اكتب شكوتك هنا...")
+
+if prompt:
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+        if uploaded_image:
+            st.image(uploaded_image, caption="صورة مرفقة", width=200)
+
+    files = {}
+    if uploaded_image:
+        uploaded_image.seek(0)
+        files["image"] = (uploaded_image.name, uploaded_image, uploaded_image.type)
+
+    data_payload = {
+        "thread_id":"123",
+        "query": prompt,
+        "summary": st.session_state.summary
     }
-    try:
-        response = requests.post(url, json=data,headers=AUTH_HEADERS)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        raise e
+    secret = os.getenv("secret")
+    # 2. تجهيز الهيدر (الخلاصة هنا)
+    headers = {
+        "Authorization":secret}
 
-def ocr_api_call(user_query, image_bytes):
-    """ Client function to call the /analyze IMAGE endpoint. """
-    url = f"{API_URL}/analyze"
-    
-    files = {'image': ('image.jpg', image_bytes, 'image/jpeg')}
-    data = {'user_query': user_query}
-    
-    try:
-        response = requests.post(url, files=files, data=data,headers=AUTH_HEADERS)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        raise e
-
-
-
-def main_app():
-    
-    st.set_page_config(
-        page_title="SehaTech 🏥", page_icon="🏥", layout="wide", initial_sidebar_state="collapsed"
-    )
-
-    if "current_mode" not in st.session_state:
-        st.session_state.current_mode = "MAIN_MENU"
-        st.session_state.chat_history = []
-        st.session_state.conversation_summary = None 
-
-    st.title("🏥 SehaTech Bot")
-    
-    if st.session_state.current_mode == "MAIN_MENU":
+    # 3. استقبال الرد (Streaming)
+    with st.chat_message("assistant"):
+        response_placeholder = st.empty()
+        full_response = ""
         
-        col_main_mid = st.columns([1, 2, 1])
-        with col_main_mid[1]:
-            st.markdown("<p style='text-align: center; font-size: 1.25rem;'>Your intelligent medical assistant. Please select a service to begin.</p>", unsafe_allow_html=True)
-            st.divider()
-
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                with st.container(border=True):
-                    st.markdown("### 🩺 Symptom Analysis")
-                    st.markdown("Describe your symptoms to get a **preliminary RAG analysis**.")
-                    if st.button("Start Now", key="diag_start", use_container_width=True, type="primary"):
-                        st.session_state.current_mode = "DIAGNOSE_MODE"
-                        st.session_state.chat_history = [
-                            {"role": "assistant", "content": """Welcome to the **Symptom Analysis Service**."""}
-                        ]
-                        st.rerun()
-
-            with col2:
-                with st.container(border=True):
-                    st.markdown("### 📄 Image Analysis")
-                    st.markdown("Read prescriptions, lab results, medicine boxes and More using the **Qwen-VL model**.")
-                    if st.button("Start Now", key="OCR", use_container_width=True, type="primary"):
-                        st.session_state.current_mode = "OCR_MODE" 
-                        st.rerun() 
-            
-            st.divider()
-            st.markdown("""<p style='text-align: center; color: grey;'>SehaTech v1.0 - Disclaimer: This tool uses AI, which can make mistakes or generate inaccurate information.</p>""", unsafe_allow_html=True)
-
-
-    elif st.session_state.current_mode == "DIAGNOSE_MODE":
-
-        with st.sidebar:
-            st.markdown("### 🧭 Current Mode")
-            st.markdown("Symptom Analysis")
-            st.divider()
-            if st.button("⬅️ Back to Main Menu", use_container_width=True):
-                st.session_state.current_mode = "MAIN_MENU"
-                st.rerun()
-
-        st.title("🩺 Symptom Analysis Assistant")
+        status_container = st.status("جاري تحليل البيانات...", expanded=True)
         
-        for message in st.session_state.chat_history:
-             with st.chat_message(message["role"]):
-                 st.markdown(message["content"])
-
-        if user_input := st.chat_input("Describe your symptoms here..."):
-            
-            st.session_state.chat_history.append({"role": "user", "content": user_input})
-            with st.chat_message("user"):
-                st.markdown(user_input)
-
-            with st.chat_message("assistant"):
-                with st.status("Bot: Thinking...", expanded=True) as status:
-                    st.write("Analyzing symptoms...")
-                    
-                    try:
-                        response_data = diagnose_api_call(
-                            user_input, 
-                            st.session_state.conversation_summary 
-                        )
-                        answer = response_data['answer']
-                        new_summary = response_data['new_summary']
-                        
-                        status.update(label="Analysis Complete!", state="complete", expanded=False)
-                        st.markdown(answer)
-                        st.session_state.chat_history.append({"role": "assistant", "content": answer})
-                        st.session_state.conversation_summary = new_summary # تحديث الملخص
-
-                    except Exception as e:
-                        status.update(label="Error", state="error", expanded=True)
-                        st.error(f"Error processing diagnosis via API: {e}")
-                        st.session_state.chat_history.append({"role": "assistant", "content": f"API Error: {e}"})
-            
-            st.rerun()
-    elif st.session_state.current_mode == "OCR_MODE":
-        
-        with st.sidebar:
-            st.markdown("### 🧭 Current Mode")
-            st.markdown("Image Analysis")
-            st.divider()
-            if st.button("⬅️ Back to Main Menu", use_container_width=True):
-                st.session_state.current_mode = "MAIN_MENU"
-                st.rerun()
-
-        st.title("📄 Analyze Medical Images")
-        st.markdown("Upload a prescription or lab result and ask a specific question.")
-
-        uploaded_file = st.file_uploader("Upload an image here:", type=["jpg", "png", "jpeg"])
-        user_question = st.text_input("Ask a question about the image:", placeholder="e.g., What is this medication and what is its dosage?")
-
-        if uploaded_file:
-            st.image(uploaded_file, caption="Uploaded Image", width=300)
-
-        if st.button("Analyze Image", key="imageRec", use_container_width=True, type="primary"):
-            if uploaded_file is not None and user_question:
-                image_bytes = uploaded_file.getvalue()
+        try:
+            # 3. تمرير headers=headers
+            with requests.post(API_URL, headers=headers, data=data_payload, files=files if files else None, stream=True) as response:
                 
-                with st.spinner("Analyzing image... 🧠"):
-                    try:
-                        response_data = ocr_api_call(user_question, image_bytes)
-                        response_text = response_data['answer']
-                        
-                        st.success("Analysis Complete!")
-                        st.markdown(response_text)
-                        
-                    except Exception as e:
-                        st.error(f"Error processing image via API: {e}")
-            else:
-                st.warning("Please upload an image and ask a question first.")
+                # التعامل مع حالة الـ Unauthorized (401)
+                if response.status_code == 401:
+                    status_container.update(label="⛔ غير مصرح", state="error")
+                    st.error("فشل المصادقة: تأكد من صحة الـ Token.")
+                
+                elif response.status_code == 200:
+                    for line in response.iter_lines():
+                        if line:
+                            decoded_line = line.decode('utf-8')
+                            try:
+                                json_data = json.loads(decoded_line)
+                                type_ = json_data.get("type")
+                                
+                                if type_ == "status":
+                                    content = json_data.get("content", "")
+                                    status_container.write(f"⚙️ {content}")
+                                    status_container.update(label=content)
 
+                                elif type_ == "token":
+                                    content = json_data.get("content", "")
+                                    full_response += content
+                                    response_placeholder.markdown(full_response + "▌")
 
-if __name__ == "__main__":
+                                elif type_ == "final":
+                                    new_summary = json_data.get("summary")
+                                    if new_summary:
+                                        st.session_state.summary = new_summary
+                                    
+                                    # التحقق من حالة الـ Action Required (لو موجودة في الرد النهائي)
+                                    if json_data.get("type") == "action_required":
+                                         st.warning("النظام يحتاج موافقة!")
 
-    main_app()
-
-
+                            except json.JSONDecodeError:
+                                pass
+                    
+                    status_container.update(label="✅ تمت المعالجة", state="complete", expanded=False)
+                    response_placeholder.markdown(full_response)
+                    
+                    st.session_state.messages.append({"role": "assistant", "content": full_response})
+                    
+                else:
+                    status_container.update(label="❌ خطأ في السيرفر", state="error")
+                    st.error(f"Error: {response.status_code} - {response.text}")
+        
+        except Exception as e:
+            status_container.update(label="❌ فشل الاتصال", state="error")
+            st.error(f"Connection Error: {e}")
