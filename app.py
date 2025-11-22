@@ -27,7 +27,7 @@ st.markdown("""
 
 # عنوان التطبيق
 st.title("🩺 SehaTech AI")
-st.toast("أول رسالة ممكن تتأخر شوية عقبال ما نصحي السيرفر.. شكراً لصبرك 🙏", icon="⏳")
+st.info("ℹ️ **Note:** The first response may take a few minutes to initialize the AI models (Cold Start). Subsequent responses will be much faster. 🚀")
 API_URL = "https://8000-dep-01kam28bek66ky6z077hhkyms9-d.cloudspaces.litng.ai/chat"
 
 # --- 3. Session State Initialization ---
@@ -158,5 +158,6 @@ if prompt:
         except Exception as e:
             status_container.update(label="❌ مشكلة في النت", state="error")
             st.error("تأكد من اتصالك بالإنترنت وحاول تاني.")
+
 
 
