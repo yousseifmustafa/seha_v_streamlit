@@ -17,9 +17,17 @@ st.markdown("""
     .stChatInput {border-radius: 20px;}
     .stChatMessage {border-radius: 15px; padding: 10px;}
     .stMarkdown {font-family: 'Segoe UI', sans-serif;}
+    /* لون مميز لرسائل الدكتور */
     div[data-testid="stChatMessage"]:nth-child(odd) {
         background-color: #f0f2f6; 
         border-left: 5px solid #2E86C1;
+    }
+    /* تظبيط زرار الـ Popover عشان يبقى شكله متناسق تحت */
+    button[data-testid="stBaseButton-secondary"] {
+        width: 100%;
+        border-radius: 10px;
+        border: 1px dashed #2E86C1;
+        color: #2E86C1;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -42,29 +50,35 @@ if "messages" not in st.session_state:
 if "summary" not in st.session_state:
     st.session_state.summary = "لا يوجد تاريخ مرضي مسجل."
 
-# --- 4. عرض الرسائل القديمة ---
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
+
+# دالة مسح الصورة
+def clear_image():
+    st.session_state.uploader_key += 1
+
+# --- 4. عرض الرسائل القديمة (الأول) ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- 5. إدارة الصورة ---
-if "uploader_key" not in st.session_state:
-    st.session_state.uploader_key = 0
+# --- 5. مكان الرفع (الجديد: تحت الرسائل مباشرة) ---
+st.markdown("---") # خط فاصل شيك
+col1, col2 = st.columns([0.8, 0.2]) # تنسيق عشان يبقى في النص
 
-def clear_image():
-    st.session_state.uploader_key += 1
+with st.container():
+    # الـ Popover مكانه هنا بقا تحت الرسائل علطول
+    with st.popover("📸 إرفاق علبه دواء / روشتة / تحليل", use_container_width=True):
+        st.info("الذكاء الاصطناعي هيحلل الصورة دي مع سؤالك الجاي.")
+        uploaded_image = st.file_uploader(
+            "اختر الصورة", 
+            type=["jpg", "png", "jpeg"], 
+            key=f"img_upload_{st.session_state.uploader_key}"
+        )
+        if uploaded_image:
+            st.image(uploaded_image, caption="تم التجهيز للإرسال ✅", width=200)
 
-with st.popover("📸 إرفاق علبه دواء / روشتة", use_container_width=True):
-    st.info("ممكن ترفع صورة روشته، تحليل، أو علبة دواء.")
-    uploaded_image = st.file_uploader(
-        "اختر الصورة", 
-        type=["jpg", "png", "jpeg"], 
-        key=f"img_upload_{st.session_state.uploader_key}"
-    )
-    if uploaded_image:
-        st.image(uploaded_image, caption="تم إرفاق الصورة بنجاح ✅", width=200)
-
-# --- 6. استقبال الرسالة ---
+# --- 6. استقبال الرسالة (تحت الرفع) ---
 prompt = st.chat_input("اكتب اللي حاسس بيه هنا...")
 
 if prompt:
@@ -95,8 +109,7 @@ if prompt:
         response_placeholder = st.empty()
         full_response = ""
         
-        # ✅ التعديل هنا: تعريف الـ Status Container قبل الـ try
-        # عشان نضمن إنه موجود لو حصل أي خطأ في الاتصال
+        # تعريف الـ Status قبل الـ Try
         status_container = st.status("🤔 لحظة واحدة، براجع حالتك...", expanded=True)
         
         try:
@@ -135,26 +148,4 @@ if prompt:
                                     if new_summary:
                                         st.session_state.summary = new_summary
                                     
-                                    if uploaded_image:
-                                        clear_image() 
-
-                            except json.JSONDecodeError:
-                                pass
-                    
-                    status_container.update(label="✅", state="complete", expanded=False)
-                    response_placeholder.markdown(full_response)
-                    
-                    st.session_state.messages.append({"role": "assistant", "content": full_response})
-                    
-                    if files:
-                        st.rerun()
-                    
-                else:
-                    status_container.update(label="❌ حصلت مشكلة", state="error")
-                    st.error(f"عذراً، السيرفر مشغول حالياً. (كود الخطأ: {response.status_code})")
-        
-        except Exception as e:
-            # دلوقتي status_container متعرف فوق، فنقدر نستخدمه بأمان
-            status_container.update(label="❌ مشكلة في الاتصال", state="error")
-            st.error(f"Connection Error: {str(e)}")
-
+                                    #
