@@ -156,8 +156,12 @@ if prompt:
                     st.error(f"عذراً، السيرفر مشغول حالياً. (كود الخطأ: {response.status_code})")
         
         except Exception as e:
-            status_container.update(label="❌ مشكلة في النت", state="error")
-            st.error("تأكد من اتصالك بالإنترنت وحاول تاني.")
+            # حل المشكلة: نتأكد إن status_container اتعمل أصلاً قبل ما نعدله
+            if 'status_container' in locals():
+                status_container.update(label="❌ فشل الاتصال", state="error")
+            
+            st.error(f"Connection Error: {str(e)}")
+
 
 
 
