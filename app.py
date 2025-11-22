@@ -106,7 +106,7 @@ if prompt:
         full_response = ""
         
         # تعريف الـ Status قبل الـ Try (مهم جداً عشان الـ NameError)
-        status_container = st.status("🤔 لحظة واحدة، براجع حالتك...", expanded=True)
+        status_container = st.status("", expanded=True)
         
         try:
             # بداية الـ Try Block
@@ -150,7 +150,7 @@ if prompt:
                             except json.JSONDecodeError:
                                 pass
                     
-                    status_container.update(label="✅ اتفضل يا بطل، دي نصيحتي ليك", state="complete", expanded=False)
+                    status_container.update(label="✅", state="complete", expanded=False)
                     response_placeholder.markdown(full_response)
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_response})
@@ -166,3 +166,4 @@ if prompt:
         except Exception as e:
             status_container.update(label="❌ مشكلة في الاتصال", state="error")
             st.error(f"Connection Error: {str(e)}")
+
