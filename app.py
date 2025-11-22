@@ -27,7 +27,6 @@ st.markdown("""
 
 # عنوان التطبيق
 st.title("🩺 SehaTech AI")
-st.markdown("#### 💙 *مساعدك الطبي الذكي.. لأن صحتك تهمنا*")
 
 # رابط الـ API
 API_URL = "https://8000-dep-01kam28bek66ky6z077hhkyms9-d.cloudspaces.litng.ai/chat"
@@ -58,8 +57,8 @@ def clear_image():
     # دالة عشان تريسيت الـ uploader
     st.session_state.uploader_key += 1
 
-with st.popover("📸 إرفاق أشعة / روشتة", use_container_width=True):
-    st.info("ممكن ترفع صورة أشعة، تحليل، أو علبة دواء.")
+with st.popover("📸 إرفاق علبه دواء / روشتة", use_container_width=True):
+    st.info("ممكن ترفع صورة روشته، تحليل، أو علبة دواء .")
     uploaded_image = st.file_uploader(
         "اختر الصورة", 
         type=["jpg", "png", "jpeg"], 
@@ -163,3 +162,4 @@ if prompt:
         except Exception as e:
             status_container.update(label="❌ مشكلة في النت", state="error")
             st.error("تأكد من اتصالك بالإنترنت وحاول تاني.")
+
