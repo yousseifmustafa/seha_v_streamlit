@@ -27,8 +27,7 @@ st.markdown("""
 
 # عنوان التطبيق
 st.title("🩺 SehaTech AI")
-
-# رابط الـ API
+st.toast("أول رسالة ممكن تتأخر شوية عقبال ما نصحي السيرفر.. شكراً لصبرك 🙏", icon="⏳")
 API_URL = "https://8000-dep-01kam28bek66ky6z077hhkyms9-d.cloudspaces.litng.ai/chat"
 
 # --- 3. Session State Initialization ---
@@ -85,7 +84,7 @@ if prompt:
         files["image"] = (uploaded_image.name, uploaded_image, uploaded_image.type)
 
     data_payload = {
-        "thread_id": "123", # يفضل تغيره لـ UUID لكل جلسة
+        "thread_id": "123",
         "query": prompt,
         "summary": st.session_state.summary
     }
@@ -99,10 +98,7 @@ if prompt:
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
         full_response = ""
-        
-        # Status مع رسائل لطيفة
-        status_container = st.status("🤔 لحظة واحدة، براجع حالتك...", expanded=True)
-        
+                
         try:
             with requests.post(API_URL, headers=headers, data=data_payload, files=files if files else None, stream=True) as response:
                 
@@ -162,4 +158,5 @@ if prompt:
         except Exception as e:
             status_container.update(label="❌ مشكلة في النت", state="error")
             st.error("تأكد من اتصالك بالإنترنت وحاول تاني.")
+
 
