@@ -141,7 +141,7 @@ if prompt:
                             except json.JSONDecodeError:
                                 pass
                     
-                    status_container.update(label="✅ اتفضل يا بطل، دي نصيحتي ليك", state="complete", expanded=False)
+                    status_container.update(label="✅", state="complete", expanded=False)
                     response_placeholder.markdown(full_response)
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_response})
@@ -157,3 +157,4 @@ if prompt:
             # دلوقتي status_container متعرف فوق، فنقدر نستخدمه بأمان
             status_container.update(label="❌ مشكلة في الاتصال", state="error")
             st.error(f"Connection Error: {str(e)}")
+
