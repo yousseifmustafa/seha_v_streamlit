@@ -3,7 +3,7 @@ import requests
 import json
 import os
 
-# --- 1. إعدادات الصفحة (تاتش العاطفة) ---
+# --- 1. إعدادات الصفحة ---
 st.set_page_config(
     page_title="SehaTech AI | رفيقك الطبي",
     page_icon="🩺",
@@ -11,13 +11,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS Customization (عشان الشكل يبقى مريح للعين) ---
+# --- 2. CSS Customization ---
 st.markdown("""
 <style>
     .stChatInput {border-radius: 20px;}
     .stChatMessage {border-radius: 15px; padding: 10px;}
     .stMarkdown {font-family: 'Segoe UI', sans-serif;}
-    /* لون مميز لرسائل الدكتور */
     div[data-testid="stChatMessage"]:nth-child(odd) {
         background-color: #f0f2f6; 
         border-left: 5px solid #2E86C1;
@@ -28,12 +27,13 @@ st.markdown("""
 # عنوان التطبيق
 st.title("🩺 SehaTech AI")
 st.info("ℹ️ **Note:** The first response may take a few minutes to initialize the AI models (Cold Start). Subsequent responses will be much faster. 🚀")
+
+# رابط الـ API
 API_URL = "https://8000-dep-01kam28bek66ky6z077hhkyms9-d.cloudspaces.litng.ai/chat"
 
 # --- 3. Session State Initialization ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # رسالة ترحيب دافئة
     st.session_state.messages.append({
         "role": "assistant",
         "content": "أهلاً بيك يا بطل 👋\nألف سلامة عليك.. طمني حاسس بإيه النهاردة؟ أنا هنا عشان اسمعك واساعدك."
@@ -47,21 +47,19 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- 5. إدارة الصورة (التعديل المهم) ---
-# بنستخدم key ثابت عشان نقدر نتحكم فيه
+# --- 5. إدارة الصورة ---
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0
 
 def clear_image():
-    # دالة عشان تريسيت الـ uploader
     st.session_state.uploader_key += 1
 
 with st.popover("📸 إرفاق علبه دواء / روشتة", use_container_width=True):
-    st.info("ممكن ترفع صورة روشته، تحليل، أو علبة دواء .")
+    st.info("ممكن ترفع صورة روشته، تحليل، أو علبة دواء.")
     uploaded_image = st.file_uploader(
         "اختر الصورة", 
         type=["jpg", "png", "jpeg"], 
-        key=f"img_upload_{st.session_state.uploader_key}" # مفتاح متغير
+        key=f"img_upload_{st.session_state.uploader_key}"
     )
     if uploaded_image:
         st.image(uploaded_image, caption="تم إرفاق الصورة بنجاح ✅", width=200)
@@ -89,16 +87,18 @@ if prompt:
         "summary": st.session_state.summary
     }
     
-    # يفضل تحط الـ Secret في st.secrets مش os.getenv لو على Streamlit Cloud
-    # secret = st.secrets["API_SECRET"] 
-    secret = os.getenv("secret", "") # Fallback
+    secret = os.getenv("secret", "") 
     headers = {"Authorization": secret}
 
     # 3. استقبال الرد (Streaming)
     with st.chat_message("assistant"):
         response_placeholder = st.empty()
         full_response = ""
-                
+        
+        # ✅ التعديل هنا: تعريف الـ Status Container قبل الـ try
+        # عشان نضمن إنه موجود لو حصل أي خطأ في الاتصال
+        status_container = st.status("🤔 لحظة واحدة، براجع حالتك...", expanded=True)
+        
         try:
             with requests.post(API_URL, headers=headers, data=data_payload, files=files if files else None, stream=True) as response:
                 
@@ -116,7 +116,7 @@ if prompt:
                                 
                                 if type_ == "status":
                                     content = json_data.get("content", "")
-                                    # ترجمة الحالة لرسائل ودودة
+                                    # ترجمة الحالة
                                     if "Retrieving" in content: msg = "📚 براجع المراجع الطبية..."
                                     elif "Thinking" in content: msg = "🧠 بفكر في الأعراض..."
                                     elif "Vision" in content: msg = "👁️ بحلل الصورة اللي بعتها..."
@@ -135,7 +135,6 @@ if prompt:
                                     if new_summary:
                                         st.session_state.summary = new_summary
                                     
-                                    # مسح الصورة أوتوماتيكياً بعد نجاح الرد
                                     if uploaded_image:
                                         clear_image() 
 
@@ -147,7 +146,6 @@ if prompt:
                     
                     st.session_state.messages.append({"role": "assistant", "content": full_response})
                     
-                    # لو كان فيه صورة، نعمل Rerun عشان الـ Uploader يختفي
                     if files:
                         st.rerun()
                     
@@ -156,12 +154,6 @@ if prompt:
                     st.error(f"عذراً، السيرفر مشغول حالياً. (كود الخطأ: {response.status_code})")
         
         except Exception as e:
-            # حل المشكلة: نتأكد إن status_container اتعمل أصلاً قبل ما نعدله
-            if 'status_container' in locals():
-                status_container.update(label="❌ فشل الاتصال", state="error")
-            
+            # دلوقتي status_container متعرف فوق، فنقدر نستخدمه بأمان
+            status_container.update(label="❌ مشكلة في الاتصال", state="error")
             st.error(f"Connection Error: {str(e)}")
-
-
-
-
